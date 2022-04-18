@@ -1,64 +1,73 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
+# IPcalcavel
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## General
+This is a tool for calculating IP subnets. 
 
-## About Laravel
+## Installation
+** method 1 : clone via GIT **
+1. Open terminal/command prompt and enter the `public_html` directory of your webserver
+2. Within the `public_html` directory run `git clone git@github.com:mikenikon/IPcalcavel.git`
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+** method 2 : transfer via FTP **
+1. From Github download the .zip file of the repository via the green 'code' button (on the <>code page)
+2. Unzip the file
+3. Via FTP copy the *entire content* of the `IPcalcavel-main folder` into the `public_html` folder of your webserver
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+** method 3 : using Laravel (only if it is installed on your machine)
+1. Start a new Laravel project, for example `laravel new IPcalcavel`
+2. From Github download the .zip file of the repository via the green 'code' button (on the <>code page)
+3. Unzip the file
+4. Overwrite the `IPcalcavel/resources/views/welcome.blade.php` file within the created Laravel project with the same file from the downloaded .zip file
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Usage
+** method 1 : via a webbrowser **
+After opening the application from your favourite webbrowser:
 
-## Learning Laravel
+1.Enter a valid IP subnet (IPv4 or IPv6) using CIDR notation, for example `192.168.1.2/24`
+2.Choose if you want the output as HTML, JSON or XML
+3.Press 'calculate'
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+** method 2 : asynchronous via Javascript **
+Please make sure the Javascript is being run from within the same Laravel application, as the CSFR token needs to be the same.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+1.determine the csrf token using PHP
+2.build a correct URL to IPcalcavel with *_token*, *input* and *output* GET variables
+3.*input* is a string with a valid CIDR address
+4.*output* is a string with 3 possible values:
+    a. empty string (output = HTML)
+    b. json (output = JSON)
+    c. xml (output = XML)
 
-## Laravel Sponsors
+**example: calculate 192.168.1.2/24 and return as JSON **
+```
+<?php
+// what is the CSRF token?
+$csrf = csrf_token();
+?>
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+<!-- javascript in a blade template-->
+<script>
+function readTextFile(file, callback) {
+    var rawFile = new XMLHttpRequest();
+    rawFile.overrideMimeType("application/json");
+    rawFile.open("GET", file, true);
+    rawFile.onreadystatechange = function() {
+        if (rawFile.readyState === 4 && rawFile.status == "200") {
+            callback(rawFile.responseText);
+        }
+    }
+    rawFile.send(null);
+}
 
-### Premium Partners
+//example output will be written to console
+var ip  = '192.168.1.2/24';
+var out = 'JSON';
+var csrf= {{ $csrf }};
+var path= 'full/path/to/IPcalcavel/';
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+readTextFile(path + "?_token=" + csrf + "&input=" + ip + "&output=" + out, function(text){
+    var data = JSON.parse(text);
+    console.log(data);
+});
+</script>
+```

@@ -3,10 +3,15 @@
 $debug_mode = FALSE; // TRUE = show , FALSE = hide
 
 /* processing of the $_GET variables starts here */
-$input  = ''; // assume there is no input
+$input  = '';
+$output = '';
 
-if($_GET) {
+if(array_key_exists('input', $_GET)) {
     $input = trim($_GET['input']);
+}
+
+if(array_key_exists('output', $_GET)) {
+    $output = trim($_GET['output']);
 }
 
 /* class for calculations (PHP) starts here */
@@ -86,16 +91,16 @@ class IPcalc
         $this->debug_info[]                = 'ip_type: ' . $this->ip_type;
 
         if($this->ip_type != 'IPv4' AND $this->ip_type != 'IPv6') {
-            $this->error_messages[] = $input . ' does not contain a valid IPv4 or IPv6
-            address';
+            $this->error_messages[] = $input .
+            ' does not contain a valid IPv4 or IPv6 address';
         }
 
         // check if the subnet mask in prefix format is valid (IPv4)
         if($this->ip_type == 'IPv4') {
             if($this->bitmask < 1 OR $this->bitmask > 32
             OR !is_numeric($this->bitmask)) {
-                $this->error_messages[] = $this->bitmask . ' is an invalid
-                bitmask for IPv4, please choose a value in between 1 and 32';
+                $this->error_messages[] = $this->bitmask .
+                ' is an invalid bitmask for IPv4, choose a value in between 1 and 32';
             }
         }
 
@@ -103,8 +108,8 @@ class IPcalc
         if($this->ip_type == 'IPv6') {
             if($this->bitmask < 1 OR $this->bitmask > 128
             OR !is_numeric($this->bitmask)) {
-                $this->error_messages[] = $this->bitmask . ' is an invalid
-                bitmask for IPv6, please choose a value in between 1 and 128';
+                $this->error_messages[] = $this->bitmask .
+                ' is an invalid bitmask for IPv6, choose a value in between 1 and 128';
             }
         }
 
@@ -136,7 +141,8 @@ class IPcalc
                         $block_bin[3] .
                         $block_bin[4];
 
-        $this->debug_info[] = 'base_ip BIN: ' . $base_ip_bin;
+        $this->debug_info[] = 'base_ip BIN: ' . $base_ip_bin
+                                . ' (' . strlen($base_ip_bin) . ')';
 
         // Calculate network
         $network_bin    = substr($base_ip_bin, 0, $this->bitmask);
@@ -147,7 +153,8 @@ class IPcalc
         for($x = 0; $x < $y; $x++) {
             $network_bin .= '0';
         }
-        $this->debug_info[] = 'network BIN: ' . $network_bin;
+        $this->debug_info[] =   'network BIN: ' . $network_bin
+                                . ' (' . strlen($network_bin) . ')';
 
         // Calculate first
         $first_bin      = substr($base_ip_bin, 0, $this->bitmask);
@@ -155,13 +162,14 @@ class IPcalc
         // add 0 until bit 31
         $y = 32 - $this->bitmask -1;
 
-        for($x = 1; $x < $y; $x++) {
+        for($x = 0; $x < $y; $x++) {
             $first_bin .= '0';
         }
         // add final 1
         $first_bin .= '1';
 
-        $this->debug_info[] = 'first BIN: ' . $first_bin;
+        $this->debug_info[] = 'first BIN: ' . $first_bin
+                                . ' (' . strlen($first_bin) . ')';
 
         // Calculate last
         $last_bin      = substr($base_ip_bin, 0, $this->bitmask);
@@ -176,13 +184,14 @@ class IPcalc
         // add final 0
         $last_bin .= '0';
 
-        $this->debug_info[] = 'last BIN: ' . $last_bin;
+        $this->debug_info[] = 'last BIN: ' . $last_bin
+                                . ' (' . strlen($last_bin) . ')';
 
         // Calculate number of hosts
         $number_of_hosts = pow(2, (32 - $this->bitmask)) - 2;
 
         // output
-        $this->network  = $this->BINtoIPv4($network_bin) . '/' . $this->bitmask;
+        $this->network  = $this->BINtoIPv4($network_bin);
         $this->first    = $this->BINtoIPv4($first_bin);
         $this->last     = $this->BINtoIPv4($last_bin);
         $this->hosts    = $number_of_hosts;
@@ -288,7 +297,8 @@ class IPcalc
                                     $block_bin[$x];
         }
 
-        $this->debug_info[] = 'base_ip_bin: ' . $base_ip_bin;
+        $this->debug_info[] = 'base_ip_bin: ' . $base_ip_bin  .
+                                ' (' . strlen($base_ip_bin) . ')';
 
         // Calculate network
         $network_bin    = substr($base_ip_bin, 0, $this->bitmask);
@@ -333,7 +343,7 @@ class IPcalc
         $number_of_hosts = number_format($number_of_hosts, 0, '', '');
 
         // output
-        $this->network  = $this->BINtoIPv6($network_bin) . "/" . $this->bitmask;
+        $this->network  = $this->BINtoIPv6($network_bin);
         $this->first    = $this->BINtoIPv6($first_bin);
         $this->last     = $this->BINtoIPv6($last_bin);
         $this->hosts    = $number_of_hosts;
@@ -381,6 +391,47 @@ class IPcalc
 // create the $IPcalc object
 $IPcalc = new IPcalc($input);
 
+// create an array for JSON/XML output
+$arr = array();
+
+$arr['network']     = $IPcalc->network;
+$arr['first']       = $IPcalc->first;
+$arr['last']        = $IPcalc->last;
+$arr['hosts']       = $IPcalc->hosts;
+$arr['errors']      = $IPcalc->error_messages;
+
+// output as XML?
+if($output == "XML" or $output == "xml") {
+    function to_xml(SimpleXMLElement $object, array $data) {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $new_object = $object->addChild($key);
+                to_xml($new_object, $value);
+            } else {
+                // if the key is an integer, it needs text with it to actually work.
+                if ($key != 0 && $key == (int) $key) {
+                    $key = "key_$key";
+                }
+
+                $object->addChild($key, $value);
+            }
+        }
+    }
+    $xml = new SimpleXMLElement('<IPcalc/>');
+    to_xml($xml, $arr);
+
+    print $xml->asXML();
+    exit;
+}
+
+// output as JSON?
+if($output == "JSON" or $output == "json") {
+    echo json_encode($arr);
+    exit;
+}
+
+// what is the CSRF token?
+$csrf = csrf_token();
 
 // end of PHP code
 ?>
@@ -397,8 +448,13 @@ $IPcalc = new IPcalc($input);
         <form method='get' action=''>
             @csrf
             <div style='display: inline-block;'>
-                Subnet (IP) : <input type='text' name='input'><br>
+                CIDR : <input type='text' id='in' name='input'><br>
             </div>
+            <select style='display: inline_block;' id='out' name='output'>
+                <option value=''>output as HTML</option>
+                <option value='json'>output as JSON</option>
+                <option value='xml'>output as XML</option>
+            </select>
             <div style='display: inline-block;'>
                 <button type='submit'>Calculate</button>
             </div>
@@ -444,5 +500,30 @@ $IPcalc = new IPcalc($input);
             @endif
         @endif
 
+        <!-- example of reading asynchronous via Javascript -->
+        <script>
+        function readTextFile(file, callback) {
+            var rawFile = new XMLHttpRequest();
+            rawFile.overrideMimeType("application/json");
+            rawFile.open("GET", file, true);
+            rawFile.onreadystatechange = function() {
+                if (rawFile.readyState === 4 && rawFile.status == "200") {
+                    callback(rawFile.responseText);
+                }
+            }
+            rawFile.send(null);
+        }
+
+        //example will be written to console
+        var ip  = '192.168.1.2/24';
+        var out = 'JSON';
+        var csrf= '{{ $csrf }}';
+        var path= '';
+
+        readTextFile(path + "?_token=" + csrf + "&input=" + ip + "&output=" + out, function(text){
+            var data = JSON.parse(text);
+            console.log(data);
+        });
+        </script>
     </body>
 </html>
