@@ -4,23 +4,45 @@
 This is a tool for calculating IP subnets. 
 
 ## Installation
-**method 1 : clone via GIT**
-1. Open terminal/command prompt and enter the `public_html` directory of your webserver
-2. Within the `public_html` directory run: `git clone git@github.com:mikenikon/IPcalcavel.git .`
-3. Use your browser and go to the correct IP/domain of your webserver
+Laravel must be installed on your machine.
 
-**method 2 : transfer via FTP**
-1. From Github download the .zip file of the repository via the green 'code' button (on the <>code page)
-2. Unzip the file
-3. Via FTP copy the *entire content* of the `IPcalcavel-main folder` into the `public_html` folder of your webserver
-4. Use your browser and go to the correct IP/domain of your webserver
+**method 1 : clone the entire project from git**
+1. create an empty directory you want the project installed in and enter it using terminal
+2. clone the entire project using:
 
-**method 3 : using Laravel (only if it is installed on your machine)**
+`git clone git@github.com:mikenikon/IPcalcavel.git .`
+
+3. from within the directory the project is installed in run:
+
+`composer install`
+
+4. copy the hidden `.env.example` file to `.env`:
+
+*windows* 
+
+`copy .env.example .env`
+
+*osx/linux* 
+
+`cp .env.example .env`
+
+5. generate a key; run:
+
+`php artisan key:generate`
+
+6. start serving; run:
+
+`php artisan serve`
+
+7. In your browser, go to [http://localhost:8000](http://localhost:8000)
+
+**method 2 : start a new Laravel project, and overwrite `/resources/views/welcome.blade.php`**
 1. Start a new Laravel project, for example `laravel new IPcalcavel`
 2. From Github download the .zip file of the repository via the green 'code' button (on the <>code page)
 3. Unzip the file
-4. Overwrite the `IPcalcavel/resources/views/welcome.blade.php` file within the created Laravel project with the same file from the downloaded .zip file
-5. run `php artisan serve` and go to `http://localhost:8000` in your browser
+4. Overwrite the `/resources/views/welcome.blade.php` file within the created Laravel project with the same file from the downloaded .zip file
+5. run `php artisan serve` and go to [http://localhost:8000](http://localhost:8000) in your browser
+
 
 ## Usage
 **method 1 : via a webbrowser**
