@@ -1,6 +1,6 @@
 <?php
 /* show or hide debug info */
-$debug_mode = TRUE; // TRUE = show , FALSE = hide
+$debug_mode = FALSE; // TRUE = show , FALSE = hide
 
 /* processing of the $_GET variables starts here */
 $input  = ''; // assume there is no input
@@ -16,7 +16,7 @@ class IPcalc
     public string $network;             // outputs the network
     public string $first;               // outputs the first IP of the range
     public string $last;                // outputs the last IP of the range
-    public int $hosts;                  // outputs the number of hosts
+    public string $hosts;               // outputs the number of hosts
 
     public array $error_messages;       // array for error messages output
     public array $debug_info;           // array with debug info output
@@ -138,7 +138,6 @@ class IPcalc
 
         $this->debug_info[] = 'base_ip BIN: ' . $base_ip_bin;
 
-
         // Calculate network
         $network_bin    = substr($base_ip_bin, 0, $this->bitmask);
 
@@ -148,60 +147,205 @@ class IPcalc
         for($x = 0; $x < $y; $x++) {
             $network_bin .= '0';
         }
-        $this->debug_info[] = "network BIN: " . $network_bin;
-
+        $this->debug_info[] = 'network BIN: ' . $network_bin;
 
         // Calculate first
         $first_bin      = substr($base_ip_bin, 0, $this->bitmask);
 
         // add 0 until bit 31
-        $y = 31 - $this->bitmask;
+        $y = 32 - $this->bitmask -1;
 
-        for($x = 0; $x < $y; $x++) {
+        for($x = 1; $x < $y; $x++) {
             $first_bin .= '0';
         }
         // add final 1
-        if($this->bitmask < 32) {
-            $first_bin .= '1';
-        }
-        else {
-            $first_bin = substr($base_ip_bin, 0, 31) . '1';
-        }
+        $first_bin .= '1';
 
-        $this->debug_info[] = "first BIN: " . $first_bin;
+        $this->debug_info[] = 'first BIN: ' . $first_bin;
 
         // Calculate last
         $last_bin      = substr($base_ip_bin, 0, $this->bitmask);
 
         // add 1 until bit 31
-        $y = 31 - $this->bitmask;
+        $y = 32 - $this->bitmask -1;
 
         for($x = 0; $x < $y; $x++) {
             $last_bin .= '1';
         }
-        // add final 0
-        if($this->bitmask < 32) {
-            $last_bin .= '0';
-        }
-        else {
-            $last_bin = substr($base_ip_bin, 0, 31) . '0';
-        }
 
-        $this->debug_info[] = "last BIN: " . $last_bin;
+        // add final 0
+        $last_bin .= '0';
+
+        $this->debug_info[] = 'last BIN: ' . $last_bin;
 
         // Calculate number of hosts
         $number_of_hosts = pow(2, (32 - $this->bitmask)) - 2;
 
-        if($number_of_hosts < 1) {
-            $number_of_hosts = 1;
-        }
-
         // output
-        $this->network  = $this->BINtoIPv4($network_bin) . "/" . $this->bitmask;
+        $this->network  = $this->BINtoIPv4($network_bin) . '/' . $this->bitmask;
         $this->first    = $this->BINtoIPv4($first_bin);
         $this->last     = $this->BINtoIPv4($last_bin);
         $this->hosts    = $number_of_hosts;
+
+        // correction if hosts <= 0
+       if($number_of_hosts <= 0) {
+            $this->hosts    = 0;
+            $this->first    = '';
+            $this->last     = '';
+        }
     }
+
+
+    private function IPv6Calc() :void
+    {
+        // make sure we have a full 8 block IPv6 address
+        // does the IP contain :: ?
+
+        if(stristr($this->base_ip, '::')) {
+            // what is the position of ::
+            $position = strpos($this->base_ip, '::');
+
+            // put ** as placeholder
+            $base_ip_full = str_replace('::', '**', $this->base_ip);
+
+            // count how many ":" remain after ** correction?
+            $colons = substr_count($base_ip_full, ':');
+
+            // count existing blocks before '**'
+            $existing_blocks = 0;
+
+            $before = stristr($base_ip_full, '**', true);
+            if(stristr($before, ':')) {
+                $existing_blocks += substr_count($before, ':') + 1;
+            }
+            elseif(strlen($before) > 0) {
+                $existing_blocks++;
+            }
+
+            // count existing blocks after '**'
+            $after = stristr($base_ip_full, '**');
+            if(stristr($after, ':')) {
+                $existing_blocks += substr_count($after, ':') + 1;
+            }
+            elseif(strlen($after) > 2) {
+                $existing_blocks++;
+            }
+
+            // build the replacement block
+            $replacement = '';
+
+            // was the :: put behind some numbers? start replacement with :
+            if($position > 0) {
+                $replacement .= ':';
+            }
+
+            // add the empty blocks
+            for($x = 0; $x < (8 - $existing_blocks); $x++) {
+                $replacement .= '0000:';
+            }
+
+            // remove the last :
+            $replacement = substr($replacement, 0, -1);
+
+            // were there still numbers after the ::? add : behind the replacement
+            if(strlen(stristr($this->base_ip, '::')) > 2) {
+                $replacement .= ':';
+            }
+
+            // put back the replacement block
+            $base_ip_full = str_replace('**', $replacement, $base_ip_full);
+
+            // debug info
+            $this->debug_info[] = 'colons: ' . $colons;
+            $this->debug_info[] = 'before: ' . $before;
+            $this->debug_info[] = 'after: ' . $after;
+            $this->debug_info[] = 'existing_blocks: ' . $existing_blocks;
+        }
+        else {
+            // if it does not contain :: it should be a full address as it was validated
+            $base_ip_full = $this->base_ip;
+        }
+
+        $this->debug_info[] = 'base_ip_full: ' . $base_ip_full;
+
+
+        // convert IPv6 to binary
+        $block      = array();  // normal
+        $block_bin  = array();  // binary
+
+        $base_ip_bin = '';      // this will be the full binary string
+
+        list($block[1], $block[2], $block[3], $block[4], $block[5], $block[6], $block[7],
+            $block[8]) = explode(":", $base_ip_full);
+
+        // convert the base IP to binary
+        for($x = 1; $x < 9; $x++) {
+            $block_bin[$x] = sprintf('%016d', decbin(hexdec($block[$x])));
+
+            $base_ip_bin .= $block_bin[$x];
+
+            $this->debug_info[] =   'block ' . $x . ' :' . $block[$x] . '/ bin :' .
+                                    $block_bin[$x];
+        }
+
+        $this->debug_info[] = 'base_ip_bin: ' . $base_ip_bin;
+
+        // Calculate network
+        $network_bin    = substr($base_ip_bin, 0, $this->bitmask);
+
+        // add 0 until bit 128
+        $y = 128 - $this->bitmask;
+
+        for($x = 0; $x < $y; $x++) {
+            $network_bin .= '0';
+        }
+        $this->debug_info[] =   'network BIN: ' . $network_bin  .
+                                ' (' . strlen($network_bin) . ')';
+
+        // Calculate first
+        $first_bin      = substr($base_ip_bin, 0, $this->bitmask);
+
+        // add 0 until bit 128
+        $y = 128 - $this->bitmask;
+
+        for($x = 0; $x < $y; $x++) {
+            $first_bin .= '0';
+        }
+
+        $this->debug_info[] =   'first BIN: ' . $first_bin  .
+                                ' (' . strlen($first_bin) . ')';
+
+        // Calculate last
+        $last_bin      = substr($base_ip_bin, 0, $this->bitmask);
+
+        // add 1 until bit 128
+        $y = 128 - $this->bitmask;
+
+        for($x = 0; $x < $y; $x++) {
+            $last_bin .= '1';
+        }
+
+        $this->debug_info[] =   'last BIN: ' . $last_bin .
+                                ' (' . strlen($last_bin) . ')';
+
+        // Calculate number of hosts
+        $number_of_hosts = pow(2, (128 - $this->bitmask));
+        $number_of_hosts = number_format($number_of_hosts, 0, '', '');
+
+        // output
+        $this->network  = $this->BINtoIPv6($network_bin) . "/" . $this->bitmask;
+        $this->first    = $this->BINtoIPv6($first_bin);
+        $this->last     = $this->BINtoIPv6($last_bin);
+        $this->hosts    = $number_of_hosts;
+
+        // correction if hosts <= 0
+        if($number_of_hosts <= 0) {
+            $this->hosts    = 0;
+            $this->first    = '';
+            $this->last     = '';
+        }
+    }
+
 
     private function BINtoIPv4($binary) :string
     {
@@ -211,6 +355,24 @@ class IPcalc
         $string .= bindec(substr($binary, 8, 8)) . ".";
         $string .= bindec(substr($binary, 16, 8)) . ".";
         $string .= bindec(substr($binary, 24, 8));
+
+        return $string;
+    }
+
+
+    private function BINtoIPv6($binary) :string
+    {
+        $string = '';
+
+        for($x = 0; $x < 128; $x = $x + 16) {
+            $hexcode = dechex(bindec(substr($binary, $x, 16)));
+
+            $string .= sprintf('%04s', $hexcode);
+
+            if($x < 112) {
+                $string .= ":";
+            }
+        }
 
         return $string;
     }
@@ -229,7 +391,7 @@ $IPcalc = new IPcalc($input);
         <title>Subnet (IP) Calculator</title>
     </head>
 
-    <body>
+    <body style='font-family: monospace';>
         <h1>Subnet (IP) Calculator</h1>
 
         <form method='get' action=''>
