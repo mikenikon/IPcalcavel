@@ -37,15 +37,15 @@ Please make sure the Javascript is being run from within the same Laravel applic
 2. build a correct URL to IPcalcavel with *_token*, *input* and *output* GET variables
 3. *input* is a string with a valid CIDR address
 4. *output* is a string with 3 possible values:
-    a. empty string (output = HTML)
-    b. json (output = JSON)
-    c. xml (output = XML)
+    1. empty string (output = HTML)
+    2. json (output = JSON)
+    3. xml (output = XML)
 5. The returned values of IPcalcavel are:
-    a. network (string)
-    b. first (string)
-    c. last (string)
-    d. hosts (string)
-    e. errormessages (array)
+    1. network (string)
+    2. first (string)
+    3. last (string)
+    4. hosts (string)
+    5. errormessages (array)
 
 **example: calculate 192.168.1.2/24 and return as JSON**
 ```
